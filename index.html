@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-search.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Copa FutBotMX 2026</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/leaflet-search.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/SedesRegionalesCopaFutBotMX2026_1.js"></script>
+        <script src="data/EventosRumboalaCopaFutBotMX2026_2.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: 'rgba(104, 33, 47, 1.00)',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: 'rgba(104, 33, 47, 1.00)',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[14.863047086445594,-113.6335805560065],[30.277936504048867,-82.6576890248985]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var title = new L.Control({'position':'topright'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Copa FutBotMX 2026</h2>';
+        };
+        title.addTo(map);
+        var abstract = new L.Control({'position':'bottomleft'});
+        abstract.onAdd = function (map) {
+            this._div = L.DomUtil.create('div',
+            'leaflet-control abstract');
+            this._div.id = 'abstract'
+                this._div.setAttribute("onmouseenter", "abstract.show()");
+                this._div.setAttribute("onmouseleave", "abstract.hide()");
+                this.hide();
+                return this._div;
+            };
+            abstract.hide = function () {
+                this._div.classList.remove("abstractUncollapsed");
+                this._div.classList.add("abstract");
+                this._div.innerHTML = 'i'
+            }
+            abstract.show = function () {
+                this._div.classList.remove("abstract");
+                this._div.classList.add("abstractUncollapsed");
+                this._div.innerHTML = 'Este mapa presenta la distribución territorial de las sedes regionales y eventos de divulgación científica vinculados a la Copa FutBotMX 2026, iniciativa impulsada por la Secretaría de Ciencia, Humanidades, Tecnología e Innovación (Secihti) para promover el desarrollo de vocaciones científicas y tecnológicas en México. El mapa muestra las instituciones y centros participantes a nivel nacional que funcionan como nodos regionales de difusión científica.';
+        };
+        abstract.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_Mapa_0');
+        map.getPane('pane_Mapa_0').style.zIndex = 400;
+        var layer_Mapa_0 = L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+            pane: 'pane_Mapa_0',
+            opacity: 1.0,
+            attribution: '<a href="https://cartodb.com/basemaps/">Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_Mapa_0;
+        map.addLayer(layer_Mapa_0);
+        function pop_SedesRegionalesCopaFutBotMX2026_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Institución</th>\
+                        <td class="visible-with-data" id="Institución">' + (feature.properties['Institución'] !== null ? autolinker.link(String(feature.properties['Institución']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Siglas</th>\
+                        <td class="visible-with-data" id="Siglas">' + (feature.properties['Siglas'] !== null ? autolinker.link(String(feature.properties['Siglas']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Municipio</th>\
+                        <td class="visible-with-data" id="Municipio">' + (feature.properties['Municipio'] !== null ? autolinker.link(String(feature.properties['Municipio']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Estado</th>\
+                        <td class="visible-with-data" id="Estado">' + (feature.properties['Estado'] !== null ? autolinker.link(String(feature.properties['Estado']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Dirección</th>\
+                        <td class="visible-with-data" id="Dirección">' + (feature.properties['Dirección'] !== null ? autolinker.link(String(feature.properties['Dirección']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_SedesRegionalesCopaFutBotMX2026_1_0() {
+            return {
+                pane: 'pane_SedesRegionalesCopaFutBotMX2026_1',
+        rotationAngle: 0.0,
+        rotationOrigin: 'center center',
+        icon: L.icon({
+            iconUrl: 'markers/SedesRegionalesCopaFutBotMX2026_1.svg',
+            iconSize: [50.92828399999993, 50.92828399999993]
+        }),
+                interactive: true,
+            }
+        }
+        map.createPane('pane_SedesRegionalesCopaFutBotMX2026_1');
+        map.getPane('pane_SedesRegionalesCopaFutBotMX2026_1').style.zIndex = 401;
+        map.getPane('pane_SedesRegionalesCopaFutBotMX2026_1').style['mix-blend-mode'] = 'normal';
+        var layer_SedesRegionalesCopaFutBotMX2026_1 = new L.geoJson(json_SedesRegionalesCopaFutBotMX2026_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_SedesRegionalesCopaFutBotMX2026_1',
+            layerName: 'layer_SedesRegionalesCopaFutBotMX2026_1',
+            pane: 'pane_SedesRegionalesCopaFutBotMX2026_1',
+            onEachFeature: pop_SedesRegionalesCopaFutBotMX2026_1,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.marker(latlng, style_SedesRegionalesCopaFutBotMX2026_1_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_SedesRegionalesCopaFutBotMX2026_1);
+        map.addLayer(layer_SedesRegionalesCopaFutBotMX2026_1);
+        function pop_EventosRumboalaCopaFutBotMX2026_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Institución</th>\
+                        <td class="visible-with-data" id="Institución">' + (feature.properties['Institución'] !== null ? autolinker.link(String(feature.properties['Institución']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Siglas</th>\
+                        <td class="visible-with-data" id="Siglas">' + (feature.properties['Siglas'] !== null ? autolinker.link(String(feature.properties['Siglas']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nombre del evento</th>\
+                        <td class="visible-with-data" id="Nombre del evento">' + (feature.properties['Nombre del evento'] !== null ? autolinker.link(String(feature.properties['Nombre del evento']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Actividades a realizar</th>\
+                        <td class="visible-with-data" id="Actividades a realizar">' + (feature.properties['Actividades a realizar'] !== null ? autolinker.link(String(feature.properties['Actividades a realizar']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Día(s) del evento</th>\
+                        <td class="visible-with-data" id="Día(s) del evento">' + (feature.properties['Día(s) del evento'] !== null ? autolinker.link(String(feature.properties['Día(s) del evento']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Mes del evento</th>\
+                        <td class="visible-with-data" id="Mes del evento">' + (feature.properties['Mes del evento'] !== null ? autolinker.link(String(feature.properties['Mes del evento']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Lugar</th>\
+                        <td class="visible-with-data" id="Lugar">' + (feature.properties['Lugar'] !== null ? autolinker.link(String(feature.properties['Lugar']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_EventosRumboalaCopaFutBotMX2026_2_0() {
+            return {
+                pane: 'pane_EventosRumboalaCopaFutBotMX2026_2',
+        rotationAngle: 0.0,
+        rotationOrigin: 'center center',
+        icon: L.icon({
+            iconUrl: 'markers/EventosRumboalaCopaFutBotMX2026_2.svg',
+            iconSize: [39.51999999999997, 39.51999999999997]
+        }),
+                interactive: true,
+            }
+        }
+        map.createPane('pane_EventosRumboalaCopaFutBotMX2026_2');
+        map.getPane('pane_EventosRumboalaCopaFutBotMX2026_2').style.zIndex = 402;
+        map.getPane('pane_EventosRumboalaCopaFutBotMX2026_2').style['mix-blend-mode'] = 'normal';
+        var layer_EventosRumboalaCopaFutBotMX2026_2 = new L.geoJson(json_EventosRumboalaCopaFutBotMX2026_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_EventosRumboalaCopaFutBotMX2026_2',
+            layerName: 'layer_EventosRumboalaCopaFutBotMX2026_2',
+            pane: 'pane_EventosRumboalaCopaFutBotMX2026_2',
+            onEachFeature: pop_EventosRumboalaCopaFutBotMX2026_2,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.marker(latlng, style_EventosRumboalaCopaFutBotMX2026_2_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_EventosRumboalaCopaFutBotMX2026_2);
+        map.addLayer(layer_EventosRumboalaCopaFutBotMX2026_2);
+        var overlaysTree = [
+            {label: '<img src="legend/EventosRumboalaCopaFutBotMX2026_2.png" /> Eventos Rumbo a la Copa FutBotMX 2026', layer: layer_EventosRumboalaCopaFutBotMX2026_2},
+            {label: '<img src="legend/SedesRegionalesCopaFutBotMX2026_1.png" /> Sedes Regionales Copa FutBotMX 2026', layer: layer_SedesRegionalesCopaFutBotMX2026_1},
+            {label: "Mapa", layer: layer_Mapa_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        map.addControl(new L.Control.Search({
+            layer: layer_SedesRegionalesCopaFutBotMX2026_1,
+            initial: false,
+            hideMarkerOnCollapse: true,
+            propertyName: 'Estado'}));
+        if (typeof url === 'undefined') {
+            document.getElementsByClassName('search-button')[0].className += ' fa fa-binoculars';
+        } else {
+            document.getElementsByClassName('search-button')[1].className += ' fa fa-binoculars';
+        }
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"Institución": "str","Estado": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Institucin = document.createElement('div');
+            div_Institucin.id = "div_Institucin";
+            div_Institucin.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Institucin);
+            sel_Institucin = document.createElement('select');
+            sel_Institucin.multiple = true;
+            sel_Institucin.size = 10;
+            sel_Institucin.id = "sel_Institucin";
+            var Institucin_options_str = "<option value='' unselected></option>";
+            sel_Institucin.onchange = function(){filterFunc()};
+            Institucin_options_str  += '<option value="Centro de Ingeniería y Desarrollo Industrial">Centro de Ingeniería y Desarrollo Industrial</option>';
+            Institucin_options_str  += '<option value="Centro de Innovación Aplicada en Tecnologías Competitivas">Centro de Innovación Aplicada en Tecnologías Competitivas</option>';
+            Institucin_options_str  += '<option value="Centro de Investigación Científica de Yucatán, A.C.">Centro de Investigación Científica de Yucatán, A.C.</option>';
+            Institucin_options_str  += '<option value="Centro de Investigación en Materiales Avanzados">Centro de Investigación en Materiales Avanzados</option>';
+            Institucin_options_str  += '<option value="Centro de Investigación y de Estudios Avanzados">Centro de Investigación y de Estudios Avanzados</option>';
+            Institucin_options_str  += '<option value="Colegio de Estdudios Científicos y Tecnológicos">Colegio de Estdudios Científicos y Tecnológicos</option>';
+            Institucin_options_str  += '<option value="Colegio de Estudios Científicos y Tecnológicos">Colegio de Estudios Científicos y Tecnológicos</option>';
+            Institucin_options_str  += '<option value="Colegio de Estudios Científicos y Tecnológicos ">Colegio de Estudios Científicos y Tecnológicos </option>';
+            Institucin_options_str  += '<option value="Consejo Tamaulipeco de Ciencia y Tecnología">Consejo Tamaulipeco de Ciencia y Tecnología</option>';
+            Institucin_options_str  += '<option value="Consejo Veracruzano de Investigación Científica y Desarrollo Tecnológico">Consejo Veracruzano de Investigación Científica y Desarrollo Tecnológico</option>';
+            Institucin_options_str  += '<option value="Dirección General de Educación Tecnológica Industrial y de Servicios">Dirección General de Educación Tecnológica Industrial y de Servicios</option>';
+            Institucin_options_str  += '<option value="Escuela Superior de Ingeniería Mecánica y Eléctrica">Escuela Superior de Ingeniería Mecánica y Eléctrica</option>';
+            Institucin_options_str  += '<option value="Escuela Superior de Ingeniería Mecánica y Eléctrica IPN">Escuela Superior de Ingeniería Mecánica y Eléctrica IPN</option>';
+            Institucin_options_str  += '<option value="Federación Mexicana de Robótica ">Federación Mexicana de Robótica </option>';
+            Institucin_options_str  += '<option value="Instituto Nacional de Rehabilitación Luis Guillermo Ibarra Ibarra">Instituto Nacional de Rehabilitación Luis Guillermo Ibarra Ibarra</option>';
+            Institucin_options_str  += '<option value="Instituto Tecnológico de Celaya">Instituto Tecnológico de Celaya</option>';
+            Institucin_options_str  += '<option value="Instituto Tecnológico de Matamoros">Instituto Tecnológico de Matamoros</option>';
+            Institucin_options_str  += '<option value="Instituto Tecnológico de Nuevo Laredo">Instituto Tecnológico de Nuevo Laredo</option>';
+            Institucin_options_str  += '<option value="Instituto Tecnológico de Reynosa">Instituto Tecnológico de Reynosa</option>';
+            Institucin_options_str  += '<option value="Museo Laberinto de las Ciencias y las Artes">Museo Laberinto de las Ciencias y las Artes</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Aguascalientes">Universidad Autónoma de Aguascalientes</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Baja California">Universidad Autónoma de Baja California</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Baja California Sur">Universidad Autónoma de Baja California Sur</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Chiapas">Universidad Autónoma de Chiapas</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Nayarit">Universidad Autónoma de Nayarit</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Quintana Roo">Universidad Autónoma de Quintana Roo</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma de Sinaloa">Universidad Autónoma de Sinaloa</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma del Estado de Hidalgo">Universidad Autónoma del Estado de Hidalgo</option>';
+            Institucin_options_str  += '<option value="Universidad Autónoma del Estado de México">Universidad Autónoma del Estado de México</option>';
+            Institucin_options_str  += '<option value="Universidad Iberoamericana">Universidad Iberoamericana</option>';
+            Institucin_options_str  += '<option value="Universidad Politécnica Lázaro Cárdenas">Universidad Politécnica Lázaro Cárdenas</option>';
+            Institucin_options_str  += '<option value="Universidad Politécnica de Victoria">Universidad Politécnica de Victoria</option>';
+            Institucin_options_str  += '<option value="Universidad Politécnica de la Región Ribereña">Universidad Politécnica de la Región Ribereña</option>';
+            Institucin_options_str  += '<option value="Universidad Tecnológica de Altamira">Universidad Tecnológica de Altamira</option>';
+            Institucin_options_str  += '<option value="Universidad Tecnológica de Durango">Universidad Tecnológica de Durango</option>';
+            Institucin_options_str  += '<option value="Universidad Tecnológica de Nayarit">Universidad Tecnológica de Nayarit</option>';
+            Institucin_options_str  += '<option value="Universidad Tecnológica de Nuevo Laredo">Universidad Tecnológica de Nuevo Laredo</option>';
+            Institucin_options_str  += '<option value="Universidad Tecnológica de Tamaulipas Norte">Universidad Tecnológica de Tamaulipas Norte</option>';
+            Institucin_options_str  += '<option value="Universidad de Colima">Universidad de Colima</option>';
+            Institucin_options_str  += '<option value="Universidad de Guadalajara">Universidad de Guadalajara</option>';
+            sel_Institucin.innerHTML = Institucin_options_str;
+            div_Institucin.appendChild(sel_Institucin);
+            var lab_Institucin = document.createElement('div');
+            lab_Institucin.innerHTML = 'Institución';
+            lab_Institucin.className = 'filterlabel';
+            div_Institucin.appendChild(lab_Institucin);
+            var reset_Institucin = document.createElement('div');
+            reset_Institucin.innerHTML = 'clear filter';
+            reset_Institucin.className = 'filterlabel';
+            reset_Institucin.onclick = function() {
+                var options = document.getElementById("sel_Institucin").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Institucin.appendChild(reset_Institucin);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Estado = document.createElement('div');
+            div_Estado.id = "div_Estado";
+            div_Estado.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Estado);
+            sel_Estado = document.createElement('select');
+            sel_Estado.multiple = true;
+            sel_Estado.size = 10;
+            sel_Estado.id = "sel_Estado";
+            var Estado_options_str = "<option value='' unselected></option>";
+            sel_Estado.onchange = function(){filterFunc()};
+            Estado_options_str  += '<option value="Aguascalientes">Aguascalientes</option>';
+            Estado_options_str  += '<option value="Baja California">Baja California</option>';
+            Estado_options_str  += '<option value="Baja California Sur">Baja California Sur</option>';
+            Estado_options_str  += '<option value="Chiapas">Chiapas</option>';
+            Estado_options_str  += '<option value="Chihuahua">Chihuahua</option>';
+            Estado_options_str  += '<option value="Ciudad de México">Ciudad de México</option>';
+            Estado_options_str  += '<option value="Colima">Colima</option>';
+            Estado_options_str  += '<option value="Durango">Durango</option>';
+            Estado_options_str  += '<option value="Guanajuato">Guanajuato</option>';
+            Estado_options_str  += '<option value="Hidalgo">Hidalgo</option>';
+            Estado_options_str  += '<option value="Jalisco">Jalisco</option>';
+            Estado_options_str  += '<option value="Michoacán">Michoacán</option>';
+            Estado_options_str  += '<option value="Nayarit">Nayarit</option>';
+            Estado_options_str  += '<option value="Querétaro">Querétaro</option>';
+            Estado_options_str  += '<option value="Quintana Roo">Quintana Roo</option>';
+            Estado_options_str  += '<option value="San Luis Potosí">San Luis Potosí</option>';
+            Estado_options_str  += '<option value="Sinaloa">Sinaloa</option>';
+            Estado_options_str  += '<option value="Tamaulipas">Tamaulipas</option>';
+            Estado_options_str  += '<option value="Veracruz">Veracruz</option>';
+            Estado_options_str  += '<option value="Yucatán">Yucatán</option>';
+            sel_Estado.innerHTML = Estado_options_str;
+            div_Estado.appendChild(sel_Estado);
+            var lab_Estado = document.createElement('div');
+            lab_Estado.innerHTML = 'Estado';
+            lab_Estado.className = 'filterlabel';
+            div_Estado.appendChild(lab_Estado);
+            var reset_Estado = document.createElement('div');
+            reset_Estado.innerHTML = 'clear filter';
+            reset_Estado.className = 'filterlabel';
+            reset_Estado.onclick = function() {
+                var options = document.getElementById("sel_Estado").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Estado.appendChild(reset_Estado);
+        </script>        
+    </body>
+</html>
